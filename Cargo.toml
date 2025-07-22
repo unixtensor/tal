@@ -1,0 +1,16 @@
+[package]
+name = "tal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.41", features = ["derive"] }
+crossterm = "0.29.0"
+ratatui = "0.29.0"
+thiserror = "2.0.12"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = 3
+codegen-units = 1
