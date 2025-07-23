@@ -77,6 +77,18 @@ fn decode_ini(app_entry_content: String) -> Option<Ini> {
 
 	for line in ini_lines {
 		if line.starts_with("#") { continue; } //ini comment
+		if line.starts_with("[Desktop Action ") && line.ends_with("]") {
+			if let Some((_, right)) = line.split_once("Action ") {
+				let action_section = &right[..right.len() - 1]; //trim "]"
+				ini_action_current = Some(action_section);
+				ini_actions.insert(action_section.to_owned(), IniAction {
+					name: None,
+					exec: None,
+					terminal: None
+				});
+			}
+			continue
+		};
 		if let Some(action_section_name) = ini_action_current { //are we in an action section
 			let (key, val) = match line.split_once('=') {
 				Some(kv) => kv,
@@ -95,35 +107,7 @@ fn decode_ini(app_entry_content: String) -> Option<Ini> {
 					}
 				}
 			});
-			if let Some(action) = ini_actions.get(action_section_name) {
-				if action.name.is_some() && action.exec.is_some() && action.terminal.is_some() {
-					ini_action_current = None;
-				}
-			};
-			if line.starts_with("[Desktop Action ") && line.ends_with("]") {
-				if let Some((_, right)) = line.split_once("Action ") {
-					let action_section = &right[..right.len() - 1]; //trim "]"
-					ini_action_current = Some(action_section);
-					ini_actions.insert(action_section.to_owned(), IniAction {
-						name: None,
-						exec: None,
-						terminal: None
-					});
-				}
-			};
-			continue;
-		}
-		if line.starts_with("[Desktop Action ") && line.ends_with("]") {
-			if let Some((_, right)) = line.split_once("Action ") {
-				let action_section = &right[..right.len() - 1]; //trim "]"
-				ini_action_current = Some(action_section);
-				ini_actions.insert(action_section.to_owned(), IniAction {
-					name: None,
-					exec: None,
-					terminal: None
-				});
-			}
-			continue;
+			continue
 		};
 
 		let (key, val) = match line.split_once('=') {
@@ -229,9 +213,8 @@ impl Display {
 	#[inline]
 	pub fn actions(&self, actions: HashMap<String, IniAction>) {
 		if actions.is_empty() { return; }
-		print!("\n\t");
-		actions.into_iter().for_each(|(act_name, act)| {
-			println!("{act_name}\n\t- Name={}\n\t- Exec={}\n\t- Terminal={}",
+		actions.into_iter().for_each(|(name, act)| {
+			println!("\n\t{name}\n\t- Name={}\n\t- Exec={}\n\t- Terminal={}",
 				act.name.unwrap_or("None".to_owned()),
 				act.exec.unwrap_or("None".to_owned()),
 				act.terminal.unwrap_or(false))
