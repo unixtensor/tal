@@ -45,7 +45,8 @@ fn into_list(read_dir: Option<ReadDir>) -> Option<Vec<PathBuf>> {
 	read_dir.map(|apps_dir| {
 		apps_dir.filter_map(Result::ok).filter_map(|entry| {
 			let path = entry.path();
-			match entry.file_type().ok()?.is_file() && path.extension()? == "desktop" {
+			let f_type = entry.file_type().ok()?;
+			match (f_type.is_file() || f_type.is_symlink()) && path.extension()? == "desktop" {
 				true => Some(path),
 				false => None,
 			}
