@@ -61,7 +61,9 @@ fn app_entry(apps: &[PathBuf]) -> Vec<Ini> {
 }
 
 fn decode_ini(app_entry_content: String) -> Option<Ini> {
-	let ini_lines: Vec<&str> = app_entry_content.split('\n').collect();
+	let ini_lines: Vec<&str> = app_entry_content.split('\n')
+		.filter(|line| !(*line).starts_with("#")) //Filter out comments
+		.collect();
 	match ini_lines.first() {
 		Some(&"[Desktop Entry]") => (),
 		_ => return None,
@@ -74,9 +76,15 @@ fn decode_ini(app_entry_content: String) -> Option<Ini> {
 	};
 	let mut ini_action_current: Option<&str> = None;
 	let mut ini_actions: HashMap<String, IniAction> = HashMap::new();
+	let str_to_bool = |s: &str| -> bool {
+		match s {
+			"False" | "false" => false,
+			"True"  | "true" => true,
+			_ => false,
+		}
+	};
 
 	for line in ini_lines {
-		if line.starts_with("#") { continue; } //ini comment
 		if line.starts_with("[Desktop Action ") && line.ends_with("]") {
 			if let Some((_, right)) = line.split_once("Action ") {
 				let action_section = &right[..right.len() - 1]; //trim "]"
@@ -94,18 +102,11 @@ fn decode_ini(app_entry_content: String) -> Option<Ini> {
 				Some(kv) => kv,
 				None => continue,
 			};
-			ini_actions.entry(action_section_name.to_owned()).and_modify(|action| {
-				if key == "Name" {
-					action.name = Some(val.to_owned())
-				} else if key == "Exec" {
-					action.exec = Some(val.to_owned())
-				} else if key == "Terminal" {
-					action.terminal = match val {
-						"False" | "false" => Some(false),
-						"True" | "true" => Some(true),
-						_ => Some(false),
-					}
-				}
+			ini_actions.entry(action_section_name.to_owned()).and_modify(|action| match key {
+				"Name" => action.name = Some(val.to_owned()),
+				"Exec" => action.exec = Some(val.to_owned()),
+				"Terminal" => action.terminal = Some(str_to_bool(val)),
+				_ => (),
 			});
 			continue
 		};
@@ -117,11 +118,8 @@ fn decode_ini(app_entry_content: String) -> Option<Ini> {
 		match key {
 			"Name" => ini_header.name = Some(val),
 			"Exec" => ini_header.exec = Some(val),
-			"Terminal" => ini_header.terminal = match val {
-				"False" | "false" => Some(false),
-				"True" | "true" => Some(true),
-				_ => Some(false),
-			},
+			"Terminal" => ini_header.terminal = Some(str_to_bool(val)),
+			"NoDisplay" => if str_to_bool(val) { return None; },
 			_ => continue,
 		}
 	}
