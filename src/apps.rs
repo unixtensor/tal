@@ -24,6 +24,8 @@ pub enum RunError {
 	System,
 	#[error("Failed to get user applications.")]
 	User,
+	#[error("Failed to get flatpak applications.")]
+	Flatpak,
 	#[error("Application {0:?} failed to start because it doesn't know what terminal to use...")]
 	NoTerminal(String),
 	#[error("An error occured executing the application, most likely a terminal does not exist.\n{0}")]
@@ -145,7 +147,7 @@ impl Spawn {
     	Self { name, terminal }
     }
 
-    fn sys_run(&self, app: Ini, stdout: bool) -> Result<(), RunError> {
+    fn sys_exec(&self, app: Ini, stdout: bool) -> Result<(), RunError> {
 		let mut args: Vec<String> = app.exec.split_whitespace()
 			.filter(|s| !matches!(*s, "%f" | "%F" | "%u" | "%U" | "%d" | "%D" | "%n" | "%N" | "%k" | "%v" | "%m" | "%c" | "%i" | "%s"))
 			.map(|s| s.to_owned())
@@ -182,7 +184,7 @@ impl Spawn {
 		let all_apps = Installed.all()?;
 		for app_entry in all_apps.into_iter() {
 			if app_entry.name.to_lowercase() == self.name.to_lowercase() {
-				return self.sys_run(app_entry, stdout)
+				return self.sys_exec(app_entry, stdout)
 			};
 		};
 		Err(RunError::NotFound(self.name.clone()))
@@ -191,6 +193,7 @@ impl Spawn {
 
 pub struct Installed;
 impl Installed {
+	pub const UNIX_FLATPAK_APPS_PATH: &str = "/var/lib/flatpak/exports/share/applications";
 	pub const UNIX_USER_APPS_PATH: &str = ".local/share/applications";
 	pub const UNIX_SYS_APPS_PATH: &str = "/usr/share/applications";
 
@@ -215,6 +218,11 @@ impl Installed {
 		})
 	}
 
+	pub fn flatpak(&self) -> Option<Vec<Ini>> {
+		let sys_apps = self.get_app_bufs(fs::read_dir(Self::UNIX_FLATPAK_APPS_PATH).ok())?;
+		Some(self.to_inis(&sys_apps))
+	}
+
 	pub fn system(&self) -> Option<Vec<Ini>> {
 		let sys_apps = self.get_app_bufs(fs::read_dir(Self::UNIX_SYS_APPS_PATH).ok())?;
 		Some(self.to_inis(&sys_apps))
@@ -231,6 +239,8 @@ impl Installed {
 	pub fn all(&self) -> Result<Vec<Ini>, RunError> {
 		let mut user_apps = self.user().ok_or(RunError::User)?;
 		let mut sys_apps = self.system().ok_or(RunError::System)?;
+		let mut flatpak_apps = self.flatpak().ok_or(RunError::Flatpak)?;
+		user_apps.append(&mut flatpak_apps);
 		user_apps.append(&mut sys_apps);
 		Ok(user_apps)
 	}

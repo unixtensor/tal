@@ -10,13 +10,16 @@ pub struct Cli {
 	input: Option<Vec<String>>,
 	/// List user installed applications that are located in /home/USER/.local/share/applications
 	#[arg(long, short)]
-	user_apps: bool,
+	user: bool,
 	/// List system installed applications that are located in /usr/share/applications
 	#[arg(long, short)]
-	system_apps: bool,
+	system: bool,
+	/// List flatpak applications that are located in /var/lib/flatpak/exports/share/applications/
+	#[arg(long, short)]
+	flatpak: bool,
 	/// List both system and user applications
 	#[arg(long, short)]
-	all_apps: bool,
+	all: bool,
 	/// Show details about the application entries
 	#[arg(long, short)]
 	details: bool,
@@ -36,18 +39,21 @@ pub fn parser() -> Option<()> {
 		});
 		return None
 	}
-	if cli_parser.all_apps {
+	if cli_parser.all {
 		match apps::Installed.all() {
 			Ok(entries) => apps::Display::new(cli_parser.details).names(entries),
 			Err(e) => eprintln!("{e}"),
 		}
 		return None
 	}
-	if cli_parser.user_apps {
+	if cli_parser.user {
 		apps::Display::new(cli_parser.details).entries(apps::Installed.user());
 	}
-	if cli_parser.system_apps {
+	if cli_parser.system {
 		apps::Display::new(cli_parser.details).entries(apps::Installed.system());
+	}
+	if cli_parser.flatpak {
+		apps::Display::new(cli_parser.details).entries(apps::Installed.flatpak());
 	}
 	None
 }
