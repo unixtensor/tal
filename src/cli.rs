@@ -25,16 +25,13 @@ pub struct Cli {
 	output: bool,
 }
 
-fn terminal_env() -> Option<String> {
-	env::var("TERMINAL").ok()
-}
-
 pub fn parser() -> Option<()> {
 	let cli_parser = Cli::parse();
+
 	if let Some(app_names) = cli_parser.input {
 		app_names.into_iter().for_each(|app_name| {
-			if let Err(run_err) = apps::Installed.run(app_name, cli_parser.output) {
-				eprintln!("{run_err}")
+			if let Err(e) = apps::Spawn::new(app_name, env::var("TERMINAL").ok()).run(cli_parser.output) {
+				eprintln!("{e}")
 			};
 		});
 		return None

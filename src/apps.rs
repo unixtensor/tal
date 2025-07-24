@@ -24,8 +24,8 @@ pub enum RunError {
 	System,
 	#[error("Failed to get user applications.")]
 	User,
-	#[error("Application failed to start because it doesn't know what terminal to use...")]
-	NoTerminal,
+	#[error("Application {0:?} failed to start because it doesn't know what terminal to use...")]
+	NoTerminal(String),
 	#[error("An error occured executing the application, most likely a terminal does not exist.\n{0}")]
 	Exec(Error),
 	#[error("Application {0:?} does not exist.")]
@@ -137,21 +137,20 @@ impl ApplicationEntry {
 }
 
 pub struct Spawn {
+	name: String,
 	terminal: Option<String>,
-	app_name: String,
-	stdout: bool,
 }
 impl Spawn {
-    pub const fn new(terminal: Option<String>, app_name: String, stdout: bool) -> Self {
-    	Self { terminal, app_name, stdout }
+    pub const fn new(name: String, terminal: Option<String>) -> Self {
+    	Self { name, terminal }
     }
 
-    fn sys_run(&self, app: Ini) -> Result<(), RunError> {
+    fn sys_run(&self, app: Ini, stdout: bool) -> Result<(), RunError> {
 		let mut args: Vec<String> = app.exec.split_whitespace()
 			.filter(|s| !matches!(*s, "%f" | "%F" | "%u" | "%U" | "%d" | "%D" | "%n" | "%N" | "%k" | "%v" | "%m" | "%c" | "%i" | "%s"))
 			.map(|s| s.to_owned())
 			.collect();
-		let std_inherit_or_null = || if self.stdout { Stdio::inherit() } else { Stdio::null() };
+		let std_inherit_or_null = || if stdout { Stdio::inherit() } else { Stdio::null() };
 
 		if app.terminal {
 			match self.terminal.clone() {
@@ -159,7 +158,7 @@ impl Spawn {
 					args.insert(0, term);
 					args.insert(1, "-e".to_owned());
 				},
-				None => return Err(RunError::NoTerminal)
+				None => return Err(RunError::NoTerminal(app.name))
 			}
 		}
 		match Command::new(args.remove(0))
@@ -170,7 +169,7 @@ impl Spawn {
 		{
 			Ok(mut child_proc) => {
 				println!("Launching application {:?}.", app.name);
-				if self.stdout {
+				if stdout {
 					child_proc.wait().map_err(RunError::Exec)?;
 				}
 				Ok(())
@@ -179,14 +178,14 @@ impl Spawn {
 		}
     }
 
-    pub fn run(&self) -> Result<(), RunError> {
+    pub fn run(&self, stdout: bool) -> Result<(), RunError> {
 		let all_apps = Installed.all()?;
 		for app_entry in all_apps.into_iter() {
-			if app_entry.name.to_lowercase() == self.app_name.to_lowercase() {
-				return self.sys_run(app_entry)
+			if app_entry.name.to_lowercase() == self.name.to_lowercase() {
+				return self.sys_run(app_entry, stdout)
 			};
 		};
-		Err(RunError::NotFound(self.app_name.clone()))
+		Err(RunError::NotFound(self.name.clone()))
 	}
 }
 
