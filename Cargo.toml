@@ -12,5 +12,5 @@ thiserror = "2.0.12"
 [profile.release]
 strip = true
 lto = true
-opt-level = 3
+opt-level = 2
 codegen-units = 1
