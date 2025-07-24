@@ -1,19 +1,20 @@
 use clap::{Parser};
+use std::env;
 
 use crate::apps::{self};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-	/// Launch an application from command line
+	/// Launch applications from the command line
 	input: Option<Vec<String>>,
-	/// List user installed apps that are located in /home/USER/.local/share/applications
+	/// List user installed applications that are located in /home/USER/.local/share/applications
 	#[arg(long, short)]
 	user_apps: bool,
-	/// List system installed apps that are located in /usr/share/applications
+	/// List system installed applications that are located in /usr/share/applications
 	#[arg(long, short)]
 	system_apps: bool,
-	/// List both system and user apps
+	/// List both system and user applications
 	#[arg(long, short)]
 	all_apps: bool,
 	/// Show details about the application entries
@@ -24,12 +25,16 @@ pub struct Cli {
 	output: bool,
 }
 
+fn terminal_env() -> Option<String> {
+	env::var("TERMINAL").ok()
+}
+
 pub fn parser() -> Option<()> {
 	let cli_parser = Cli::parse();
 	if let Some(app_names) = cli_parser.input {
 		app_names.into_iter().for_each(|app_name| {
-			if apps::Installed.run_cli(&app_name, cli_parser.output).is_none() {
-				eprintln!("Application {app_name:?} does not exist.")
+			if let Err(run_err) = apps::Installed.run(app_name, cli_parser.output) {
+				eprintln!("{run_err}")
 			};
 		});
 		return None
