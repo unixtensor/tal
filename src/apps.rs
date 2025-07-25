@@ -1,14 +1,14 @@
 use std::{collections::HashMap, env, fmt, fs::{self, ReadDir}, io::Error, path::PathBuf, process::{Command, Stdio}};
 use thiserror::Error;
 
+type Actions = HashMap<String, IniAction<String>>;
+
 #[derive(Debug)]
 pub struct IniAction<T: AsRef<str>> {
 	pub name: Option<T>,
 	pub exec: Option<T>,
 	pub terminal: Option<bool>,
 }
-
-type Actions = HashMap<String, IniAction<String>>;
 
 #[derive(Debug)]
 pub struct Ini {
