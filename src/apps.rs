@@ -218,14 +218,17 @@ impl Installed {
 		})
 	}
 
-	pub fn flatpak(&self) -> Option<Vec<Ini>> {
-		let sys_apps = self.get_app_bufs(fs::read_dir(Self::UNIX_FLATPAK_APPS_PATH).ok())?;
+	fn read(&self, path: &str) -> Option<Vec<Ini>> {
+		let sys_apps = self.get_app_bufs(fs::read_dir(path).ok())?;
 		Some(self.to_inis(&sys_apps))
 	}
 
+	pub fn flatpak(&self) -> Option<Vec<Ini>> {
+		self.read(Self::UNIX_FLATPAK_APPS_PATH)
+	}
+
 	pub fn system(&self) -> Option<Vec<Ini>> {
-		let sys_apps = self.get_app_bufs(fs::read_dir(Self::UNIX_SYS_APPS_PATH).ok())?;
-		Some(self.to_inis(&sys_apps))
+		self.read(Self::UNIX_SYS_APPS_PATH)
 	}
 
 	pub fn user(&self) -> Option<Vec<Ini>> {
